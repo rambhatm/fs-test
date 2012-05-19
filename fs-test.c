@@ -12,6 +12,9 @@
 #define _LARGEFILE_SOURCE 1
 #define _LARGEFILE64_SOURCE 1
 
+/*Number of subdirectory levels to test*/
+#define LEVELS 5
+
 #define _GNU_SOURCE /* for asprintf() */
 
 #include <errno.h>
@@ -125,8 +128,7 @@ int test_gcompris_locking(void) {
  * slowing down file operations.
  */
 int test_subdirectory_creation(void) {
-#define LEVELS 5
-  char *path = strdup("test");
+  char *path = strdup("testfstest");
   int level;
   printf("info: testing subdirectory creation\n");
   for (level = 0; level < LEVELS; level++) {
@@ -141,6 +143,11 @@ int test_subdirectory_creation(void) {
     free(path);
     path = newpath;
   }
+  if(level>0){
+    /*BUTT ugly cleanup code!*/
+    system ("rm -rf testfstest");
+  }
+  printf("   Subdirectory test successful!\n");
   return 0;
 }
 
@@ -150,9 +157,12 @@ int test_subdirectory_creation(void) {
  */
 int test_symlinks(void) {
   printf("info: testing symlink creation\n");
-  unlink("symlink");
   if (-1 == symlink("file", "symlink"))
     printf("  error: Unable to create symlink\n");
+  else{
+    printf("   Symlink test passed!\n");
+    unlink("symlink");
+  }
   return 0;
 }
 
@@ -173,7 +183,6 @@ int test_hardlinks(void) {
     goto cleanup0;
   }
 
-  unlink("hardlink");
 
   if (-1 == fstat(fd, &status)) {
     printf("  warning: Unable to stat file to hardlink\n");
@@ -195,7 +204,10 @@ int test_hardlinks(void) {
   }
 
  cleanup1:
+  unlink("hardlink");
+  unlink("file");
   close(fd);
+  printf("   Hardlink test successful!\n");
 
  cleanup0:
   return 0;
@@ -220,19 +232,25 @@ mode_t touch_get_mode(const char *name, mode_t mode) {
 int test_umask(void) {
   mode_t orig_umask = umask(000);
   mode_t newmode;
+  unsigned int success=1;
 
   printf("info: testing umask effect on file creation\n");
   if (0666 != (newmode = touch_get_mode("foobar", 0666))) {
     printf("  error: Wrong file mode %o when creating using mode 666 and umask 000\n",
            newmode);
+    success=0;
   }
   umask(007);
   if (0660 != (newmode = touch_get_mode("foobar", 0666))) {
     printf("  error: Wrong file mode %o when creating using mode 666 and umask 007\n",
            newmode);
+    success=0;
   }
 
   umask (orig_umask);
+  
+  if(success)
+    printf("   Umask test successful!\n");
   return 0;
 }
 
@@ -249,4 +267,3 @@ int main(void) {
   test_gcompris_locking();
   return 0;
 }
-
